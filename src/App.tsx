@@ -9,7 +9,6 @@ import TrialDetailsEditor from './components/TrialDetailsEditor';
 import ApplicationsTable from './components/ApplicationsTable';
 import Footer from './components/Footer';
 import { useTrial } from './hooks/useTrial';
-import { useClubPublic } from './hooks/useClubPublic';
 import { useApplications } from './hooks/useApplications';
 import { loginUser, logoutUser } from './services/auth';
 import { getClubProfile } from './services/profiles';
@@ -28,7 +27,9 @@ function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState(() =>
+    localStorage.getItem(`submitted_${trialObjectId}`) === 'true',
+  );
 
   const [ownerSession, setOwnerSession] = useState<{
     token: string;
@@ -39,14 +40,6 @@ function App() {
   const trialQuery = useTrial();
   const trial = trialQuery.data;
 
-  const derivedClubObjectId = trial?.club
-    ? (Array.isArray(trial.club) ? trial.club[0]?.objectId : trial.club?.objectId)
-    : undefined;
-  const clubPublicQuery = useClubPublic(
-    ownerSession?.clubObjectId || derivedClubObjectId,
-    ownerSession?.token,
-  );
-  const publicClub = clubPublicQuery.data;
 
   const appsQuery = useApplications(ownerSession?.clubObjectId, ownerSession?.token);
 
@@ -56,6 +49,7 @@ function App() {
     onSuccess: () => {
       setFormError(null);
       setSubmitted(true);
+      localStorage.setItem(`submitted_${trialObjectId}`, 'true');
     },
     onError: (error: unknown) => {
       if (error instanceof EmailAlreadyRegisteredError) {
@@ -72,6 +66,9 @@ function App() {
       trialDateTime: string;
       location: string;
       price: number;
+      minAge: number;
+      maxAge: number;
+      maxParticipants: number;
     }) => updateTrial(trialObjectId, payload, ownerSession!.token),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trial', trialObjectId] });
@@ -228,7 +225,7 @@ function App() {
 
   return (
     <div className="min-h-screen text-text">
-      <Header clubLogoUrl={publicClub?.logoUrl || undefined} onOwnerTrigger={() => setShowLogin(true)} />
+      <Header onOwnerTrigger={() => setShowLogin(true)} />
 
       <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">{mainContent}</main>
 

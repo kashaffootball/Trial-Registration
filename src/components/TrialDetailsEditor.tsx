@@ -9,6 +9,9 @@ interface TrialDetailsEditorProps {
     trialDateTime: string;
     location: string;
     price: number;
+    minAge: number;
+    maxAge: number;
+    maxParticipants: number;
   }) => Promise<void>;
 }
 
@@ -24,6 +27,9 @@ export default function TrialDetailsEditor({ trial, loading = false, onSave }: T
   const [trialDateTime, setTrialDateTime] = useState(toDateTimeLocal(trial.trialDateTime));
   const [location, setLocation] = useState(trial.location || '');
   const [price, setPrice] = useState(String(trial.price || 0));
+  const [minAge, setMinAge] = useState(String(trial.minAge ?? ''));
+  const [maxAge, setMaxAge] = useState(String(trial.maxAge ?? ''));
+  const [maxParticipants, setMaxParticipants] = useState(String(trial.maxParticipants ?? ''));
 
   const inputClass =
     'w-full rounded-xl border border-white/15 bg-bg px-4 py-3 text-white outline-none focus:border-primary';
@@ -35,6 +41,9 @@ export default function TrialDetailsEditor({ trial, loading = false, onSave }: T
       trialDateTime: trialDateTime ? new Date(trialDateTime).toISOString() : '',
       location,
       price: Number(price || 0),
+      minAge: Number(minAge || 0),
+      maxAge: Number(maxAge || 0),
+      maxParticipants: Number(maxParticipants || 0),
     });
   };
 
@@ -44,13 +53,16 @@ export default function TrialDetailsEditor({ trial, loading = false, onSave }: T
       <form onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-2">
         <input className={inputClass} value={trialName} onChange={(e) => setTrialName(e.target.value)} placeholder="Trial name" />
         <input
-          className={inputClass}
+          className={`${inputClass} [color-scheme:dark]`}
           type="datetime-local"
           value={trialDateTime}
           onChange={(e) => setTrialDateTime(e.target.value)}
         />
         <input className={inputClass} value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location" />
-        <input className={inputClass} type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Price" />
+        <input className={inputClass} type="number" min={0} value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Price (EGP)" />
+        <input className={inputClass} type="number" min={0} value={minAge} onChange={(e) => setMinAge(e.target.value)} placeholder="Min age" />
+        <input className={inputClass} type="number" min={0} value={maxAge} onChange={(e) => setMaxAge(e.target.value)} placeholder="Max age" />
+        <input className={`${inputClass} sm:col-span-2`} type="number" min={1} value={maxParticipants} onChange={(e) => setMaxParticipants(e.target.value)} placeholder="Max participants (total spots)" />
 
         <button
           type="submit"

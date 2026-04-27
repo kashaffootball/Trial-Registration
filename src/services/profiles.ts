@@ -1,4 +1,4 @@
-import { BACKENDLESS_CONFIG, getHeaders, handleApiError, fetchWithTestAuth } from './api';
+import { BACKENDLESS_CONFIG, getHeaders, handleApiError } from './api';
 import type { Club, CreatePlayerProfileParams, Player } from './types';
 
 export const createPlayerProfileViaService = async (
@@ -108,17 +108,14 @@ export const setPlayerUserRelation = async (
 
 export const getClubByObjectId = async (
   clubObjectId: string,
-  userToken?: string,
+  userToken: string,
 ): Promise<Club | null> => {
   if (!clubObjectId) return null;
 
-  const url = `${BACKENDLESS_CONFIG.SERVER_URL}/api/data/Clubs/${clubObjectId}`;
-
-  const response = userToken
-    ? await fetch(url, { method: 'GET', headers: getHeaders(userToken) })
-    : await fetchWithTestAuth((token) =>
-        fetch(url, { method: 'GET', headers: getHeaders(token) }),
-      );
+  const response = await fetch(
+    `${BACKENDLESS_CONFIG.SERVER_URL}/api/data/Clubs/${clubObjectId}`,
+    { method: 'GET', headers: getHeaders(userToken) },
+  );
 
   if (!response.ok) {
     if (response.status === 404) return null;

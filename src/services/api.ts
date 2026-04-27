@@ -5,8 +5,8 @@ export const BACKENDLESS_CONFIG = {
 };
 
 // Test user for authenticated API access (public read requires auth)
-const TEST_USER_EMAIL = 'testuser@gmail.com';
-const TEST_USER_PASSWORD = 'Kashaffootball@26';
+const TEST_USER_EMAIL = import.meta.env.VITE_TEST_USER_EMAIL as string;
+const TEST_USER_PASSWORD = import.meta.env.VITE_TEST_USER_PASSWORD as string;
 
 let cachedUserToken: string | null = null;
 

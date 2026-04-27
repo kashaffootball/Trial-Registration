@@ -105,13 +105,23 @@ export default function PlayerForm({ loading = false, error, minAge, maxAge, onS
 
   const inputClass =
     'w-full rounded-xl border border-white/15 bg-bg px-4 py-3 text-white outline-none focus:border-primary';
+  const selectClass = `${inputClass} pr-10 appearance-none`;
+  const dateClass = `${inputClass} [color-scheme:dark]`;
+
+  const Chevron = () => (
+    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-subtle" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+      </svg>
+    </span>
+  );
 
   return (
     <section className="rounded-3xl border border-white/10 bg-surface p-6">
       <h2 className="mb-2 font-kashafBold text-2xl text-white">Apply Now</h2>
       <p className="mb-6 text-sm text-subtle">Fill your profile info and submit to secure your trial spot.</p>
 
-      <form onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-2">
+      <form onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-2 items-start">
         <input
           className={`${inputClass} sm:col-span-2`}
           type="email"
@@ -128,9 +138,9 @@ export default function PlayerForm({ loading = false, error, minAge, maxAge, onS
           value={values.fullName}
           onChange={(e) => setValues((prev) => ({ ...prev, fullName: e.target.value }))}
         />
-        <div>
+        <div className="flex flex-col">
           <input
-            className={`${inputClass}${ageError ? ' border-error' : ''}`}
+            className={`${dateClass}${ageError ? ' border-error' : ''}`}
             type="date"
             required
             value={values.dateOfBirth}
@@ -142,17 +152,18 @@ export default function PlayerForm({ loading = false, error, minAge, maxAge, onS
             </p>
           )}
         </div>
-        <select
-          className={inputClass}
-          value={values.city}
-          onChange={(e) => setValues((prev) => ({ ...prev, city: e.target.value }))}
-        >
-          {cities.map((city) => (
-            <option key={city} value={city}>
-              {city}
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            className={selectClass}
+            value={values.city}
+            onChange={(e) => setValues((prev) => ({ ...prev, city: e.target.value }))}
+          >
+            {cities.map((city) => (
+              <option key={city} value={city}>{city}</option>
+            ))}
+          </select>
+          <Chevron />
+        </div>
         <input
           className={inputClass}
           type="number"
@@ -169,28 +180,34 @@ export default function PlayerForm({ loading = false, error, minAge, maxAge, onS
           value={values.weight}
           onChange={(e) => setValues((prev) => ({ ...prev, weight: e.target.value }))}
         />
-        <select
-          className={inputClass}
-          value={values.preferredFoot}
-          onChange={(e) =>
-            setValues((prev) => ({ ...prev, preferredFoot: e.target.value as 'left' | 'right' | 'both' }))
-          }
-        >
-          <option value="left">Left</option>
-          <option value="right">Right</option>
-          <option value="both">Both</option>
-        </select>
-        <select
-          className={inputClass}
-          value={values.position}
-          onChange={(e) => setValues((prev) => ({ ...prev, position: e.target.value }))}
-        >
-          <option>Goalkeeper</option>
-          <option>Defender</option>
-          <option>Midfielder</option>
-          <option>Winger</option>
-          <option>Forward</option>
-        </select>
+        <div className="relative">
+          <select
+            className={selectClass}
+            value={values.preferredFoot}
+            onChange={(e) =>
+              setValues((prev) => ({ ...prev, preferredFoot: e.target.value as 'left' | 'right' | 'both' }))
+            }
+          >
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+            <option value="both">Both</option>
+          </select>
+          <Chevron />
+        </div>
+        <div className="relative">
+          <select
+            className={selectClass}
+            value={values.position}
+            onChange={(e) => setValues((prev) => ({ ...prev, position: e.target.value }))}
+          >
+            <option>Goalkeeper</option>
+            <option>Defender</option>
+            <option>Midfielder</option>
+            <option>Winger</option>
+            <option>Forward</option>
+          </select>
+          <Chevron />
+        </div>
 
         <div className="sm:col-span-2">
           <label className="mb-2 block text-sm text-subtle">Profile picture</label>

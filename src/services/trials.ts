@@ -1,4 +1,4 @@
-import { BACKENDLESS_CONFIG, getHeaders, handleApiError, fetchWithTestAuth } from './api';
+import { BACKENDLESS_CONFIG, getHeaders, handleApiError } from './api';
 import type { Trial, TrialApplication } from './types';
 
 /**
@@ -6,12 +6,9 @@ import type { Trial, TrialApplication } from './types';
  * Loads club relation for payment info linking.
  */
 export const getTrialPublic = async (trialObjectId: string): Promise<Trial | null> => {
-  const related = encodeURIComponent('club');
-  const response = await fetchWithTestAuth((token) =>
-    fetch(
-      `${BACKENDLESS_CONFIG.SERVER_URL}/api/data/Trials/${trialObjectId}?loadRelations=${related}`,
-      { method: 'GET', headers: getHeaders(token) },
-    ),
+  const response = await fetch(
+    `${BACKENDLESS_CONFIG.SERVER_URL}/api/data/Trials/${trialObjectId}`,
+    { method: 'GET', headers: getHeaders() },
   );
 
   if (!response.ok) {
@@ -53,6 +50,9 @@ export const updateTrial = async (
     trialDateTime: string;
     location: string;
     price: number;
+    minAge: number;
+    maxAge: number;
+    maxParticipants: number;
   }>,
   userToken: string,
 ): Promise<Trial> => {

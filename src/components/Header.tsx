@@ -1,11 +1,10 @@
 import { useRef } from 'react';
 
 interface HeaderProps {
-  clubLogoUrl?: string;
   onOwnerTrigger: () => void;
 }
 
-export default function Header({ clubLogoUrl, onOwnerTrigger }: HeaderProps) {
+export default function Header({ onOwnerTrigger }: HeaderProps) {
   const touchTimer = useRef<number | null>(null);
 
   const handleTouchStart = () => {
@@ -43,9 +42,9 @@ export default function Header({ clubLogoUrl, onOwnerTrigger }: HeaderProps) {
           aria-label="Club owner access"
         >
           <img
-            src={clubLogoUrl || '/logo.png'}
-            alt="Club"
-            className="h-11 w-11 rounded-full object-cover"
+            src="/Logo Transparent.png"
+            alt="Kashaf"
+            className="h-11 w-11 rounded-full object-contain bg-white p-0.5"
           />
         </button>
       </div>

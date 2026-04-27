@@ -1,11 +1,10 @@
-import { BackendlessError } from '../services/api';
+import { BackendlessError, BACKENDLESS_CONFIG, getHeaders } from '../services/api';
 import { loginUser, registerUser } from '../services/auth';
 import { uploadFile } from '../services/files';
 import {
   createPlayerProfileViaService,
   getPlayerProfile,
   setPlayerUserRelation,
-  updatePlayerProfileViaService,
 } from '../services/profiles';
 import { applyForTrial } from '../services/trials';
 import type { Player } from '../services/types';
@@ -23,6 +22,17 @@ export interface PlayerFormInput {
 }
 
 const DUMMY_PASSWORD = import.meta.env.VITE_DUMMY_PASSWORD as string;
+
+const patchPlayerImage = async (playerObjectId: string, profileImageUrl: string, userToken: string): Promise<void> => {
+  await fetch(
+    `${BACKENDLESS_CONFIG.SERVER_URL}/api/data/Players/${playerObjectId}`,
+    {
+      method: 'PUT',
+      headers: getHeaders(userToken),
+      body: JSON.stringify({ profileImageUrl }),
+    },
+  );
+};
 
 const getToken = (user: Record<string, unknown>): string => {
   const token = (user['user-token'] as string | undefined) ?? (user.userToken as string | undefined);
@@ -79,30 +89,33 @@ export const submitApplication = async (
     throw new Error('VITE_DUMMY_PASSWORD is required.');
   }
 
-  let user: Record<string, unknown>;
+  let user: Record<string, unknown> | undefined;
 
+  // Always attempt registration first.
+  // code 3033 = email already registered by us (same dummy password) → just login.
+  // any other error = email belongs to a real/external account → block.
   try {
-    user = (await loginUser({ email: values.email, password: DUMMY_PASSWORD })) as Record<string, unknown>;
-  } catch (error) {
-    // isInvalidLogin = wrong password = user exists but wasn't registered by us
-    if (isInvalidLogin(error)) {
+    await registerUser({ email: values.email, password: DUMMY_PASSWORD });
+  } catch (registerError) {
+    if (registerError instanceof BackendlessError && registerError.code === 3033) {
+      // Already registered by us — try to login; if wrong password it's a real account
+      try {
+        user = (await loginUser({ email: values.email, password: DUMMY_PASSWORD })) as Record<string, unknown>;
+      } catch (loginError) {
+        if (isInvalidLogin(loginError)) throw new EmailAlreadyRegisteredError();
+        throw loginError;
+      }
+    } else {
       throw new EmailAlreadyRegisteredError();
     }
+  }
 
-    // Any other login error = user doesn't exist yet, register them
-    try {
-      await registerUser({ email: values.email, password: DUMMY_PASSWORD });
-    } catch (registerError) {
-      // code 3033 = user already exists (race condition), safe to ignore
-      if (registerError instanceof BackendlessError && registerError.code !== 3033) {
-        throw registerError;
-      }
-    }
-
+  // If registration succeeded, login now
+  if (!user) {
     user = (await loginUser({ email: values.email, password: DUMMY_PASSWORD })) as Record<string, unknown>;
   }
 
-  const userToken = getToken(user);
+  const userToken = getToken(user as Record<string, unknown>);
   const userObjectId = String(user.objectId || '');
   if (!userObjectId) {
     throw new Error('Missing user objectId in Backendless response.');
@@ -116,12 +129,12 @@ export const submitApplication = async (
   const uploaded = await uploadFile(values.profilePic, uploadPath, values.profilePic.name, userToken);
   const profileImageUrl = uploaded.fileURL || '';
 
-  // 3. Update player profile with image URL
+  // 3. Update player profile with image URL directly via Data API (user owns their own record)
   if (profileImageUrl) {
     try {
-      await updatePlayerProfileViaService(player.objectId, { profileImageUrl }, userToken);
+      await patchPlayerImage(player.objectId, profileImageUrl, userToken);
     } catch (e) {
-      console.warn('updatePlayerProfileViaService (image) failed', e);
+      console.warn('patchPlayerImage failed', e);
     }
   }
 

@@ -8,4 +8,7 @@ export const useTrial = () =>
     queryKey: ['trial', trialId],
     queryFn: () => getTrialPublic(trialId),
     enabled: !!trialId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
