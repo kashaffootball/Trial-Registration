@@ -190,13 +190,22 @@ function App() {
         <TrialDetailsCard trial={trial} />
 
         {!submitted ? (
-          <PlayerForm
-            loading={applyMutation.isPending}
-            error={formError}
-            onSubmit={async (values) => {
-              await applyMutation.mutateAsync({ values, trialId: trialObjectId });
-            }}
-          />
+          (trial.remainingSeats ?? 0) <= 0 ? (
+            <div className="flex flex-col items-center gap-2 rounded-3xl border border-error/30 bg-surface p-8 text-center">
+              <p className="font-kashafBold text-lg text-error">Trial is Full</p>
+              <p className="text-sm text-subtle">All spots have been taken. Check back later for future trials.</p>
+            </div>
+          ) : (
+            <PlayerForm
+              loading={applyMutation.isPending}
+              error={formError}
+              minAge={trial.minAge}
+              maxAge={trial.maxAge}
+              onSubmit={async (values) => {
+                await applyMutation.mutateAsync({ values, trialId: trialObjectId });
+              }}
+            />
+          )
         ) : (
           <ThankYouPanel />
         )}

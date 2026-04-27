@@ -4,6 +4,8 @@ import type { PlayerFormInput } from '../lib/submitApplication';
 interface PlayerFormProps {
   loading?: boolean;
   error?: string | null;
+  minAge?: number | null;
+  maxAge?: number | null;
   onSubmit: (values: PlayerFormInput) => Promise<void>;
 }
 
@@ -48,7 +50,16 @@ const cities = [
   'Sohag',
 ];
 
-export default function PlayerForm({ loading = false, error, onSubmit }: PlayerFormProps) {
+const calcAge = (dob: string): number => {
+  const birth = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+};
+
+export default function PlayerForm({ loading = false, error, minAge, maxAge, onSubmit }: PlayerFormProps) {
   const [values, setValues] = useState<PlayerFormState>({
     email: '',
     fullName: '',
@@ -60,10 +71,24 @@ export default function PlayerForm({ loading = false, error, onSubmit }: PlayerF
     position: 'Midfielder',
   });
   const [profilePic, setProfilePic] = useState<File | null>(null);
+  const [ageError, setAgeError] = useState<string | null>(null);
+
+  const handleDobChange = (dob: string) => {
+    setValues((prev) => ({ ...prev, dateOfBirth: dob }));
+    if (!dob) { setAgeError(null); return; }
+    const age = calcAge(dob);
+    if (minAge != null && age < minAge) {
+      setAgeError(`You must be at least ${minAge} years old to apply.`);
+    } else if (maxAge != null && age > maxAge) {
+      setAgeError(`You must be ${maxAge} years old or younger to apply.`);
+    } else {
+      setAgeError(null);
+    }
+  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!profilePic) return;
+    if (!profilePic || ageError) return;
 
     await onSubmit({
       email: values.email.trim(),
@@ -103,13 +128,20 @@ export default function PlayerForm({ loading = false, error, onSubmit }: PlayerF
           value={values.fullName}
           onChange={(e) => setValues((prev) => ({ ...prev, fullName: e.target.value }))}
         />
-        <input
-          className={inputClass}
-          type="date"
-          required
-          value={values.dateOfBirth}
-          onChange={(e) => setValues((prev) => ({ ...prev, dateOfBirth: e.target.value }))}
-        />
+        <div>
+          <input
+            className={`${inputClass}${ageError ? ' border-error' : ''}`}
+            type="date"
+            required
+            value={values.dateOfBirth}
+            onChange={(e) => handleDobChange(e.target.value)}
+          />
+          {(minAge != null || maxAge != null) && (
+            <p className={`mt-1 text-xs ${ageError ? 'text-error' : 'text-subtle'}`}>
+              {ageError ?? `Age requirement: ${minAge ?? '?'}–${maxAge ?? '?'} years old`}
+            </p>
+          )}
+        </div>
         <select
           className={inputClass}
           value={values.city}
@@ -176,7 +208,7 @@ export default function PlayerForm({ loading = false, error, onSubmit }: PlayerF
         <button
           type="submit"
           className="sm:col-span-2 rounded-xl bg-primary px-4 py-3 font-kashafBold text-bg transition hover:opacity-90 disabled:opacity-60"
-          disabled={loading || !profilePic}
+          disabled={loading || !profilePic || !!ageError}
         >
           {loading ? 'Submitting...' : 'Submit Application'}
         </button>

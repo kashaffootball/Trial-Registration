@@ -47,6 +47,33 @@ export default function TrialDetailsCard({ trial }: TrialDetailsCardProps) {
           <p className="text-xs uppercase text-subtle">Price</p>
           <p className="mt-1 text-lg text-white">EGP {Number(trial.price || 0).toLocaleString()}</p>
         </div>
+        <div className="rounded-2xl bg-bg/70 p-4">
+          <p className="text-xs uppercase text-subtle">Age Group</p>
+          <p className="mt-1 text-lg text-white">{trial.minAge ?? '-'} – {trial.maxAge ?? '-'} yrs</p>
+        </div>
+        <div className="rounded-2xl bg-bg/70 p-4 sm:col-span-2">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs uppercase text-subtle">Available Spots</p>
+            <p className="text-sm font-kashafBold text-white">
+              {trial.remainingSeats ?? 0} <span className="font-normal text-subtle">/ {trial.maxParticipants ?? 0} remaining</span>
+            </p>
+          </div>
+          {(() => {
+            const max = trial.maxParticipants || 1;
+            const remaining = trial.remainingSeats ?? 0;
+            const filled = max - remaining;
+            const pct = Math.min(100, Math.round((filled / max) * 100));
+            const barColor = pct >= 90 ? 'bg-error' : pct >= 60 ? 'bg-yellow-500' : 'bg-primary';
+            return (
+              <div className="h-2.5 w-full overflow-hidden rounded-full bg-white/10">
+                <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+              </div>
+            );
+          })()}
+          {(trial.remainingSeats ?? 0) === 0 && (
+            <p className="mt-2 text-xs font-kashafBold text-error">No spots available — trial is full.</p>
+          )}
+        </div>
       </div>
     </section>
   );
