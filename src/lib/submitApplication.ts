@@ -137,7 +137,7 @@ export const submitApplication = async (
   const player = await ensurePlayer(userObjectId, userToken, values);
 
   // 2. Upload profile pic to media/player/{playerObjectId}/
-  const uploadPath = `/media/player/${player.objectId}/`;
+  const uploadPath = `/media/players/${player.objectId}/`;
   const uploaded = await uploadFile(values.profilePic, uploadPath, values.profilePic.name, userToken);
   const profileImageUrl = uploaded.fileURL || '';
 
