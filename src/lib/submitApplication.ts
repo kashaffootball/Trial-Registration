@@ -21,7 +21,20 @@ export interface PlayerFormInput {
   profilePic: File;
 }
 
-const DUMMY_PASSWORD = import.meta.env.VITE_DUMMY_PASSWORD as string;
+/**
+ * Generates a cryptographically strong random password (20 chars).
+ * Each player account gets a unique password generated at registration time.
+ */
+const generateStrongPassword = (): string => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  let password = '';
+  const array = new Uint32Array(20);
+  crypto.getRandomValues(array);
+  for (let i = 0; i < 20; i++) {
+    password += chars[array[i] % chars.length];
+  }
+  return password;
+};
 
 const patchPlayerImage = async (playerObjectId: string, profileImageUrl: string, userToken: string): Promise<void> => {
   await fetch(
@@ -85,22 +98,21 @@ export const submitApplication = async (
   values: PlayerFormInput,
   trialObjectId: string,
 ): Promise<void> => {
-  if (!DUMMY_PASSWORD) {
-    throw new Error('VITE_DUMMY_PASSWORD is required.');
-  }
+  // Generate a unique strong password for this user account (only used at reg/login time)
+  const playerPassword = generateStrongPassword();
 
   let user: Record<string, unknown> | undefined;
 
   // Always attempt registration first.
-  // code 3033 = email already registered by us (same dummy password) → just login.
+  // code 3033 = email already registered by us → just login.
   // any other error = email belongs to a real/external account → block.
   try {
-    await registerUser({ email: values.email, password: DUMMY_PASSWORD });
+    await registerUser({ email: values.email, password: playerPassword });
   } catch (registerError) {
     if (registerError instanceof BackendlessError && registerError.code === 3033) {
       // Already registered by us — try to login; if wrong password it's a real account
       try {
-        user = (await loginUser({ email: values.email, password: DUMMY_PASSWORD })) as Record<string, unknown>;
+        user = (await loginUser({ email: values.email, password: playerPassword })) as Record<string, unknown>;
       } catch (loginError) {
         if (isInvalidLogin(loginError)) throw new EmailAlreadyRegisteredError();
         throw loginError;
@@ -112,7 +124,7 @@ export const submitApplication = async (
 
   // If registration succeeded, login now
   if (!user) {
-    user = (await loginUser({ email: values.email, password: DUMMY_PASSWORD })) as Record<string, unknown>;
+    user = (await loginUser({ email: values.email, password: playerPassword })) as Record<string, unknown>;
   }
 
   const userToken = getToken(user as Record<string, unknown>);
