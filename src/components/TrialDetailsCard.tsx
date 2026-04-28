@@ -1,4 +1,5 @@
 import type { Trial } from '../services/types';
+import { format } from 'date-fns';
 
 interface TrialDetailsCardProps {
   trial: Trial;
@@ -6,7 +7,7 @@ interface TrialDetailsCardProps {
 
 const formatDate = (value: number | null) => {
   if (!value) return 'TBD';
-  return new Date(value).toLocaleString();
+  return format(new Date(value), 'dd/MM/yyyy hh:mm aa');
 };
 
 export default function TrialDetailsCard({ trial }: TrialDetailsCardProps) {
