@@ -11,8 +11,8 @@ import Footer from './components/Footer';
 import { useTrial } from './hooks/useTrial';
 import { useApplications } from './hooks/useApplications';
 import { loginUser, logoutUser } from './services/auth';
-import { getClubProfile } from './services/profiles';
-import { updateApplicationStatus, updateTrial } from './services/trials';
+import { getClubProfile, updateClub } from './services/profiles';
+import { deleteApplication, updateApplicationStatus, updateTrial } from './services/trials';
 import { EmailAlreadyRegisteredError, submitApplication } from './lib/submitApplication';
 import type { TrialApplication } from './services/types';
 import type { PlayerFormInput } from './lib/submitApplication';
@@ -61,15 +61,26 @@ function App() {
   });
 
   const trialSaveMutation = useMutation({
-    mutationFn: (payload: {
+    mutationFn: async (payload: {
       trialName: string;
       trialDateTime: string;
       location: string;
+      mapsLink: string;
       price: number;
       minAge: number;
       maxAge: number;
       maxParticipants: number;
-    }) => updateTrial(trialObjectId, payload, ownerSession!.token),
+      remainingSeats: number;
+      clubWhatsappNumber: string;
+    }) => {
+      const { clubWhatsappNumber, ...trialPayload } = payload;
+      // Update trial details
+      await updateTrial(trialObjectId, trialPayload, ownerSession!.token);
+      // Update club whatsappNumber if changed
+      if (clubWhatsappNumber && ownerSession?.clubObjectId) {
+        await updateClub(ownerSession.clubObjectId, { whatsappNumber: clubWhatsappNumber }, ownerSession.token);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['trial', trialObjectId] });
     },
@@ -109,6 +120,18 @@ function App() {
     );
     queryClient.invalidateQueries({ queryKey: ['clubApplications', ownerSession.clubObjectId] });
   };
+
+  const deleteApplicationsMutation = useMutation({
+    mutationFn: async (applicationIds: string[]) => {
+      if (!ownerSession) throw new Error('Not authenticated');
+      await Promise.all(applicationIds.map((id) => deleteApplication(id, ownerSession.token)));
+    },
+    onSuccess: () => {
+      if (ownerSession) {
+        queryClient.invalidateQueries({ queryKey: ['clubApplications', ownerSession.clubObjectId] });
+      }
+    },
+  });
 
   const mainContent = useMemo(() => {
     if (trialQuery.isLoading) {
@@ -171,13 +194,19 @@ function App() {
 
           <TrialDetailsEditor
             trial={trial}
+            clubWhatsappNumber={trial.club && !Array.isArray(trial.club) ? trial.club.whatsappNumber || '' : trial.club?.[0]?.whatsappNumber || ''}
             loading={trialSaveMutation.isPending}
             onSave={async (payload) => {
               await trialSaveMutation.mutateAsync(payload);
             }}
           />
 
-          <ApplicationsTable rows={appsQuery.data || []} onTogglePaid={onTogglePaid} />
+          <ApplicationsTable
+            rows={appsQuery.data || []}
+            onTogglePaid={onTogglePaid}
+            onDelete={deleteApplicationsMutation.mutateAsync}
+            deleting={deleteApplicationsMutation.isPending}
+          />
         </div>
       );
     }
@@ -204,7 +233,7 @@ function App() {
             />
           )
         ) : (
-          <ThankYouPanel />
+          <ThankYouPanel whatsappNumber={trial.club && !Array.isArray(trial.club) ? trial.club.whatsappNumber : trial.club?.[0]?.whatsappNumber} />
         )}
       </div>
     );

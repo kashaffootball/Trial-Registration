@@ -7,7 +7,7 @@ import type { Trial, TrialApplication } from './types';
  */
 export const getTrialPublic = async (trialObjectId: string): Promise<Trial | null> => {
   const response = await fetch(
-    `${BACKENDLESS_CONFIG.SERVER_URL}/api/data/Trials/${trialObjectId}`,
+    `${BACKENDLESS_CONFIG.SERVER_URL}/api/data/Trials/${trialObjectId}?loadRelations=${encodeURIComponent('club')}`,
     { method: 'GET', headers: getHeaders() },
   );
 
@@ -49,10 +49,12 @@ export const updateTrial = async (
     trialName: string;
     trialDateTime: string;
     location: string;
+    mapsLink: string;
     price: number;
     minAge: number;
     maxAge: number;
     maxParticipants: number;
+    remainingSeats: number;
   }>,
   userToken: string,
 ): Promise<Trial> => {
@@ -135,4 +137,21 @@ export const updateApplicationStatus = async (
   }
 
   return response.json();
+};
+
+export const deleteApplication = async (
+  applicationId: string,
+  userToken: string,
+): Promise<void> => {
+  const response = await fetch(
+    `${BACKENDLESS_CONFIG.SERVER_URL}/api/data/TrialApplication/${applicationId}`,
+    {
+      method: 'DELETE',
+      headers: getHeaders(userToken),
+    },
+  );
+
+  if (!response.ok) {
+    await handleApiError(response);
+  }
 };

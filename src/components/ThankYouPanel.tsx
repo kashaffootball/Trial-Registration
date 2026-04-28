@@ -1,7 +1,13 @@
-const PAYMENT_NUMBER = '01066306638';
+const DEFAULT_PAYMENT_NUMBER = '01066306638';
 
-export default function ThankYouPanel() {
-  const waLink = `https://wa.me/2${PAYMENT_NUMBER}`;
+interface ThankYouPanelProps {
+  whatsappNumber?: string;
+}
+
+export default function ThankYouPanel({ whatsappNumber }: ThankYouPanelProps) {
+  const rawNumber = whatsappNumber || DEFAULT_PAYMENT_NUMBER;
+  const paymentNumber = rawNumber.startsWith('2') ? rawNumber.slice(1) : rawNumber;
+  const waLink = `https://wa.me/2${paymentNumber}`;
 
   return (
     <section className="rounded-3xl border border-primary/30 bg-surface p-6 shadow-glow">
@@ -18,12 +24,12 @@ export default function ThankYouPanel() {
 
         <div className="w-full rounded-xl border border-primary/40 bg-primary/10 px-5 py-4">
           <p className="text-sm text-subtle">Pay via InstaPay or Vodafone Cash to the wallet number below</p>
-          <p className="mt-1 font-kashafBold text-3xl tracking-widest text-primary">{PAYMENT_NUMBER}</p>
+          <p className="mt-1 font-kashafBold text-3xl tracking-widest text-primary">{paymentNumber}</p>
         </div>
 
         <div className="w-full space-y-2 rounded-xl border border-white/10 bg-white/5 px-5 py-4 text-left text-sm text-subtle">
           <p className="font-kashafBold text-white">Next Steps:</p>
-          <p>1. Open your bank app and transfer the trial fee to {PAYMENT_NUMBER} using InstaPay or Vodafone Cash.</p>
+          <p>1. Open your bank app and transfer the trial fee to {paymentNumber} using InstaPay or Vodafone Cash.</p>
           <p>2. Save a screenshot of your payment confirmation.</p>
           <p>3. Send the screenshot via WhatsApp to the same number to complete your registration.</p>
         </div>

@@ -124,3 +124,24 @@ export const getClubByObjectId = async (
 
   return response.json();
 };
+
+export const updateClub = async (
+  clubObjectId: string,
+  clubData: Partial<Pick<Club, 'whatsappNumber' | 'instapayLink' | 'clubName' | 'location'>>,
+  userToken: string,
+): Promise<Club> => {
+  const response = await fetch(
+    `${BACKENDLESS_CONFIG.SERVER_URL}/api/data/Clubs/${clubObjectId}`,
+    {
+      method: 'PUT',
+      headers: getHeaders(userToken),
+      body: JSON.stringify(clubData),
+    },
+  );
+
+  if (!response.ok) {
+    await handleApiError(response);
+  }
+
+  return response.json();
+};
