@@ -31,11 +31,26 @@ function App() {
     localStorage.getItem(`submitted_${trialObjectId}`) === 'true',
   );
 
+const OWNER_SESSION_KEY = 'kashaf_owner_session';
+
   const [ownerSession, setOwnerSession] = useState<{
     token: string;
     userId: string;
     clubObjectId: string;
-  } | null>(null);
+  } | null>(() => {
+    try {
+      const saved = localStorage.getItem(OWNER_SESSION_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as { token: string; userId: string; clubObjectId: string };
+        if (parsed?.token && parsed?.userId && parsed?.clubObjectId) {
+          return parsed;
+        }
+      }
+    } catch {
+      // ignore parse errors
+    }
+    return null;
+  });
 
   const trialQuery = useTrial();
   const trial = trialQuery.data;
@@ -100,6 +115,7 @@ function App() {
     },
     onSuccess: (data) => {
       setOwnerSession(data);
+      localStorage.setItem(OWNER_SESSION_KEY, JSON.stringify(data));
       setShowLogin(false);
       setLoginError(null);
     },
@@ -183,8 +199,13 @@ function App() {
             <button
               type="button"
               onClick={async () => {
-                await logoutUser(ownerSession.token);
+                try {
+                  await logoutUser(ownerSession.token);
+                } catch {
+                  // ignore logout errors
+                }
                 setOwnerSession(null);
+                localStorage.removeItem(OWNER_SESSION_KEY);
               }}
               className="rounded-lg border border-white/20 px-4 py-2 text-sm text-white"
             >
