@@ -95,6 +95,7 @@ export interface TrialApplication {
 export interface RegisterPayload {
   email: string;
   password: string;
+  mobileNumber: string;
 }
 
 export interface LoginPayload {

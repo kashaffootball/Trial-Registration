@@ -8,6 +8,7 @@ export const registerUser = async (payload: RegisterPayload): Promise<Backendles
     body: JSON.stringify({
       email: payload.email,
       password: payload.password,
+      mobileNumber: payload.mobileNumber,
       userType: 'player',
       isEmailVerified: true,
       isActive: true,

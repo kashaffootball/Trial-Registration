@@ -6,11 +6,13 @@ import {
   getPlayerProfile,
   setPlayerUserRelation,
 } from '../services/profiles';
-import { applyForTrial } from '../services/trials';
+import { applyForTrial, hasPlayerAppliedToTrial } from '../services/trials';
 import type { Player } from '../services/types';
 
 export interface PlayerFormInput {
   email: string;
+  mobileNumber: string;
+  password: string;
   fullName: string;
   dateOfBirth: string;
   city: string;
@@ -21,20 +23,6 @@ export interface PlayerFormInput {
   profilePic: File;
 }
 
-/**
- * Generates a cryptographically strong random password (20 chars).
- * Each player account gets a unique password generated at registration time.
- */
-const generateStrongPassword = (): string => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-  let password = '';
-  const array = new Uint32Array(20);
-  crypto.getRandomValues(array);
-  for (let i = 0; i < 20; i++) {
-    password += chars[array[i] % chars.length];
-  }
-  return password;
-};
 
 const patchPlayerImage = async (playerObjectId: string, profileImageUrl: string, userToken: string): Promise<void> => {
   await fetch(
@@ -60,10 +48,17 @@ const isInvalidLogin = (error: unknown): boolean => {
   return error.code === 3003 || error.message.toLowerCase().includes('invalid login or password');
 };
 
-export class EmailAlreadyRegisteredError extends Error {
+export class AccountAlreadyExistsError extends Error {
   constructor() {
-    super('This email is already registered. Please use another email.');
-    this.name = 'EmailAlreadyRegisteredError';
+    super('This email or mobile number is already registered. Please use different credentials.');
+    this.name = 'AccountAlreadyExistsError';
+  }
+}
+
+export class AlreadyAppliedError extends Error {
+  constructor() {
+    super('You have already applied for this trial.');
+    this.name = 'AlreadyAppliedError';
   }
 }
 
@@ -98,27 +93,33 @@ export const submitApplication = async (
   values: PlayerFormInput,
   trialObjectId: string,
 ): Promise<void> => {
-  // Generate a unique strong password for this user account (only used at reg/login time)
-  const playerPassword = generateStrongPassword();
+  // Use the user-provided password from the form
+  const playerPassword = values.password;
 
   let user: Record<string, unknown> | undefined;
 
   // Always attempt registration first.
   // code 3033 = email already registered by us → just login.
+  // code for mobile number duplication = also try to login.
   // any other error = email belongs to a real/external account → block.
   try {
-    await registerUser({ email: values.email, password: playerPassword });
+    await registerUser({ email: values.email, password: playerPassword, mobileNumber: values.mobileNumber });
   } catch (registerError) {
-    if (registerError instanceof BackendlessError && registerError.code === 3033) {
-      // Already registered by us — try to login; if wrong password it's a real account
-      try {
-        user = (await loginUser({ email: values.email, password: playerPassword })) as Record<string, unknown>;
-      } catch (loginError) {
-        if (isInvalidLogin(loginError)) throw new EmailAlreadyRegisteredError();
-        throw loginError;
+    if (registerError instanceof BackendlessError) {
+      // Handle both email (3033) and mobile number duplication errors
+      if (registerError.code === 3033 || registerError.message?.toLowerCase().includes('mobile') || registerError.message?.toLowerCase().includes('duplicate')) {
+        // Already registered by us — try to login; if wrong password it's a real account
+        try {
+          user = (await loginUser({ email: values.email, password: playerPassword })) as Record<string, unknown>;
+        } catch (loginError) {
+          if (isInvalidLogin(loginError)) throw new AccountAlreadyExistsError();
+          throw loginError;
+        }
+      } else {
+        throw new AccountAlreadyExistsError();
       }
     } else {
-      throw new EmailAlreadyRegisteredError();
+      throw new AccountAlreadyExistsError();
     }
   }
 
@@ -135,6 +136,12 @@ export const submitApplication = async (
 
   // 1. Create player profile first (without image) to get playerObjectId
   const player = await ensurePlayer(userObjectId, userToken, values);
+
+  // 1.2. Check if player has already applied to this trial
+  const hasApplied = await hasPlayerAppliedToTrial(trialObjectId, player.objectId, userToken);
+  if (hasApplied) {
+    throw new AlreadyAppliedError();
+  }
 
   // 2. Upload profile pic to media/player/{playerObjectId}/
   const uploadPath = `/media/players/${player.objectId}/`;

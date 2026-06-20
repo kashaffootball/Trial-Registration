@@ -1,9 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { getApplicationsForClub } from '../services/trials';
+import { getApplicationsForTrial } from '../services/trials';
 
-export const useApplications = (clubObjectId?: string, userToken?: string) =>
+export const useApplications = (trialId?: string, userToken?: string) =>
   useQuery({
-    queryKey: ['clubApplications', clubObjectId],
-    queryFn: () => getApplicationsForClub(clubObjectId!, userToken!),
-    enabled: !!clubObjectId && !!userToken,
+    queryKey: ['trialApplications', trialId],
+    queryFn: () => getApplicationsForTrial(trialId!, userToken!),
+    enabled: !!trialId && !!userToken,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });

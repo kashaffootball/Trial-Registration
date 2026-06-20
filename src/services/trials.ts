@@ -117,6 +117,52 @@ export const getApplicationsForClub = async (
   return response.json();
 };
 
+export const getApplicationsForTrial = async (
+  trialId: string,
+  userToken: string,
+): Promise<TrialApplication[]> => {
+  const sanitizedId = trialId.replace(/[^a-zA-Z0-9-]/g, '');
+  const where = encodeURIComponent(`trial.objectId = '${sanitizedId}'`);
+  const related = encodeURIComponent('trial.club,player,player.user');
+  const response = await fetch(
+    `${BACKENDLESS_CONFIG.SERVER_URL}/api/data/TrialApplication?where=${where}&loadRelations=${related}&sortBy=created%20desc&pageSize=100`,
+    {
+      method: 'GET',
+      headers: getHeaders(userToken),
+    },
+  );
+
+  if (!response.ok) {
+    await handleApiError(response);
+  }
+
+  return response.json();
+};
+
+export const hasPlayerAppliedToTrial = async (
+  trialId: string,
+  playerObjectId: string,
+  userToken: string,
+): Promise<boolean> => {
+  const sanitizedTrialId = trialId.replace(/[^a-zA-Z0-9-]/g, '');
+  const sanitizedPlayerId = playerObjectId.replace(/[^a-zA-Z0-9-]/g, '');
+  const where = encodeURIComponent(`trial.objectId = '${sanitizedTrialId}' AND player.objectId = '${sanitizedPlayerId}'`);
+  const response = await fetch(
+    `${BACKENDLESS_CONFIG.SERVER_URL}/api/data/TrialApplication?where=${where}&pageSize=1`,
+    {
+      method: 'GET',
+      headers: getHeaders(userToken),
+    },
+  );
+
+  if (!response.ok) {
+    await handleApiError(response);
+  }
+
+  const data = await response.json();
+  return Array.isArray(data) && data.length > 0;
+};
+
 export const updateApplicationStatus = async (
   applicationId: string,
   status: string,
@@ -154,4 +200,41 @@ export const deleteApplication = async (
   if (!response.ok) {
     await handleApiError(response);
   }
+};
+
+export const getAllActiveTrials = async (): Promise<Trial[]> => {
+  const where = encodeURIComponent('isActive = true');
+  const sortBy = encodeURIComponent('trialDateTime%20asc');
+  const response = await fetch(
+    `${BACKENDLESS_CONFIG.SERVER_URL}/api/data/Trials?where=${where}&sortBy=${sortBy}&pageSize=100`,
+    {
+      method: 'GET',
+      headers: getHeaders(),
+    },
+  );
+
+  if (!response.ok) {
+    await handleApiError(response);
+  }
+
+  return response.json();
+};
+
+export const getClosestTrial = async (): Promise<Trial | null> => {
+  const trials = await getAllActiveTrials();
+  if (!trials || trials.length === 0) return null;
+
+  const now = Date.now();
+  const futureTrials = trials.filter(trial => trial.trialDateTime && trial.trialDateTime > now);
+
+  if (futureTrials.length === 0) return null;
+
+  // Sort by date and get the closest one
+  futureTrials.sort((a, b) => {
+    const dateA = a.trialDateTime || 0;
+    const dateB = b.trialDateTime || 0;
+    return dateA - dateB;
+  });
+
+  return futureTrials[0];
 };

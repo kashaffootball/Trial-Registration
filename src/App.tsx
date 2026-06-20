@@ -13,7 +13,7 @@ import { useApplications } from './hooks/useApplications';
 import { loginUser, logoutUser } from './services/auth';
 import { getClubProfile, updateClub } from './services/profiles';
 import { deleteApplication, updateApplicationStatus, updateTrial } from './services/trials';
-import { EmailAlreadyRegisteredError, submitApplication } from './lib/submitApplication';
+import { AccountAlreadyExistsError, AlreadyAppliedError, submitApplication } from './lib/submitApplication';
 import type { TrialApplication } from './services/types';
 import type { PlayerFormInput } from './lib/submitApplication';
 
@@ -56,18 +56,24 @@ const OWNER_SESSION_KEY = 'kashaf_owner_session';
   const trial = trialQuery.data;
 
 
-  const appsQuery = useApplications(ownerSession?.clubObjectId, ownerSession?.token);
+  const appsQuery = useApplications(trial?.objectId, ownerSession?.token);
 
   const applyMutation = useMutation({
     mutationFn: ({ values, trialId }: { values: PlayerFormInput; trialId: string }) =>
       submitApplication(values, trialId),
-    onSuccess: () => {
+    onSuccess: async () => {
       setFormError(null);
       setSubmitted(true);
       localStorage.setItem(`submitted_${trialObjectId}`, 'true');
+      // Decrement remaining seats after successful application
+      if (trial && ownerSession) {
+        const newRemainingSeats = (trial.remainingSeats || 0) - 1;
+        await updateTrial(trial.objectId, { remainingSeats: newRemainingSeats }, ownerSession.token);
+        queryClient.invalidateQueries({ queryKey: ['trial', 'closest'] });
+      }
     },
     onError: (error: unknown) => {
-      if (error instanceof EmailAlreadyRegisteredError) {
+      if (error instanceof AccountAlreadyExistsError || error instanceof AlreadyAppliedError) {
         setFormError(error.message);
         return;
       }
@@ -134,17 +140,21 @@ const OWNER_SESSION_KEY = 'kashaf_owner_session';
       paid ? 'paid' : 'pending',
       ownerSession.token,
     );
-    queryClient.invalidateQueries({ queryKey: ['clubApplications', ownerSession.clubObjectId] });
+    queryClient.invalidateQueries({ queryKey: ['trialApplications', trial?.objectId] });
   };
 
   const deleteApplicationsMutation = useMutation({
     mutationFn: async (applicationIds: string[]) => {
       if (!ownerSession) throw new Error('Not authenticated');
       await Promise.all(applicationIds.map((id) => deleteApplication(id, ownerSession.token)));
+      return applicationIds;
     },
-    onSuccess: () => {
-      if (ownerSession) {
-        queryClient.invalidateQueries({ queryKey: ['clubApplications', ownerSession.clubObjectId] });
+    onSuccess: async (deletedIds) => {
+      if (ownerSession && trial) {
+        const newRemainingSeats = (trial.remainingSeats || 0) + deletedIds.length;
+        await updateTrial(trial.objectId, { remainingSeats: newRemainingSeats }, ownerSession.token);
+        queryClient.invalidateQueries({ queryKey: ['trialApplications', trial.objectId] });
+        queryClient.invalidateQueries({ queryKey: ['trial', 'closest'] });
       }
     },
   });
@@ -225,7 +235,7 @@ const OWNER_SESSION_KEY = 'kashaf_owner_session';
           <ApplicationsTable
             rows={appsQuery.data || []}
             onTogglePaid={onTogglePaid}
-            onDelete={deleteApplicationsMutation.mutateAsync}
+            onDelete={(ids) => deleteApplicationsMutation.mutateAsync(ids).then(() => {})}
             deleting={deleteApplicationsMutation.isPending}
           />
         </div>

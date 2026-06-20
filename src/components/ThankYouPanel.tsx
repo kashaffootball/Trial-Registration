@@ -29,7 +29,7 @@ export default function ThankYouPanel({ whatsappNumber }: ThankYouPanelProps) {
 
         <div className="w-full space-y-2 rounded-xl border border-white/10 bg-white/5 px-5 py-4 text-left text-sm text-subtle">
           <p className="font-kashafBold text-white">Next Steps:</p>
-          <p>1. Open your bank app and transfer the trial fee to {paymentNumber} using InstaPay or Vodafone Cash.</p>
+          <p>1. Open your bank app and transfer the trial fee to {paymentNumber} mobile wallet using InstaPay or Vodafone Cash.</p>
           <p>2. Save a screenshot of your payment confirmation.</p>
           <p>3. Send the screenshot via WhatsApp to the same number to complete your registration.</p>
         </div>
@@ -46,6 +46,12 @@ export default function ThankYouPanel({ whatsappNumber }: ThankYouPanelProps) {
           </svg>
           Send Payment Screenshot on WhatsApp
         </a>
+
+        <div className="w-full rounded-xl border border-white/10 bg-white/5 px-5 py-4 text-center">
+          <p className="text-sm text-subtle">
+            Want to track your application status? Download the app and login to your account to stay updated.
+          </p>
+        </div>
       </div>
     </section>
   );

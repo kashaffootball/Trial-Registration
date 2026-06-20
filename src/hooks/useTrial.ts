@@ -1,13 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { getTrialPublic } from '../services/trials';
-
-const trialId = import.meta.env.VITE_TRIAL_OBJECT_ID as string;
+import { getClosestTrial } from '../services/trials';
 
 export const useTrial = () =>
   useQuery({
-    queryKey: ['trial', trialId],
-    queryFn: () => getTrialPublic(trialId),
-    enabled: !!trialId,
+    queryKey: ['trial', 'closest'],
+    queryFn: () => getClosestTrial(),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,

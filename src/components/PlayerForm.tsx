@@ -11,6 +11,7 @@ interface PlayerFormProps {
 
 interface PlayerFormState {
   email: string;
+  mobileNumber: string;
   fullName: string;
   dateOfBirth: string;
   city: string;
@@ -18,6 +19,8 @@ interface PlayerFormState {
   weight: string;
   preferredFoot: 'left' | 'right' | 'both';
   position: string;
+  password: string;
+  confirmPassword: string;
 }
 
 const cities = [
@@ -59,9 +62,38 @@ const calcAge = (dob: string): number => {
   return age;
 };
 
+const normalizeArabicNumerals = (text: string): string => {
+  const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+  const englishNumerals = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+  let normalized = text;
+  arabicNumerals.forEach((arabic, index) => {
+    normalized = normalized.replace(new RegExp(arabic, 'g'), englishNumerals[index]);
+  });
+  return normalized;
+};
+
+const normalizeToEgypt12 = (value: string): string => {
+  const digits = normalizeArabicNumerals(value).replace(/[^\d]/g, '');
+
+  if (digits.startsWith('0020')) return digits.slice(2);
+  if (digits.startsWith('20') && digits.length === 12) return digits;
+  if (digits.startsWith('0') && digits.length === 11) return `20${digits.slice(1)}`;
+  if (digits.startsWith('1') && digits.length === 10) return `20${digits}`;
+
+  return digits;
+};
+
+const validateMobileNumber = (value: string): boolean => {
+  const normalized = normalizeToEgypt12(value);
+  return /^20\d{10}$/.test(normalized);
+};
+
 export default function PlayerForm({ loading = false, error, minAge, maxAge, onSubmit }: PlayerFormProps) {
   const [values, setValues] = useState<PlayerFormState>({
     email: '',
+    mobileNumber: '',
+    password: '',
+    confirmPassword: '',
     fullName: '',
     dateOfBirth: '',
     city: 'Cairo',
@@ -72,6 +104,8 @@ export default function PlayerForm({ loading = false, error, minAge, maxAge, onS
   });
   const [profilePic, setProfilePic] = useState<File | null>(null);
   const [ageError, setAgeError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [mobileError, setMobileError] = useState<string | null>(null);
 
   const handleDobChange = (dob: string) => {
     setValues((prev) => ({ ...prev, dateOfBirth: dob }));
@@ -86,12 +120,41 @@ export default function PlayerForm({ loading = false, error, minAge, maxAge, onS
     }
   };
 
+  const handleMobileChange = (value: string) => {
+    setValues((prev) => ({ ...prev, mobileNumber: value }));
+    if (!value) {
+      setMobileError(null);
+      return;
+    }
+    if (!validateMobileNumber(value)) {
+      setMobileError('Please enter a valid Egyptian mobile number');
+    } else {
+      setMobileError(null);
+    }
+  };
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!profilePic || ageError) return;
+    if (!profilePic || ageError || mobileError) return;
+
+    if (values.password !== values.confirmPassword) {
+      setPasswordError('Passwords do not match');
+      return;
+    }
+
+    if (values.password.length < 8) {
+      setPasswordError('Password must be at least 8 characters');
+      return;
+    }
+
+    setPasswordError(null);
+
+    const normalizedMobile = normalizeToEgypt12(values.mobileNumber);
 
     await onSubmit({
       email: values.email.trim(),
+      mobileNumber: normalizedMobile,
+      password: values.password,
       fullName: values.fullName.trim(),
       dateOfBirth: values.dateOfBirth,
       city: values.city,
@@ -122,23 +185,70 @@ export default function PlayerForm({ loading = false, error, minAge, maxAge, onS
       <p className="mb-6 text-sm text-subtle">Fill your profile info and submit to secure your trial spot.</p>
 
       <form onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-2 items-start">
-        <input
-          className={`${inputClass} sm:col-span-2`}
-          type="email"
-          placeholder="Email"
-          required
-          value={values.email}
-          onChange={(e) => setValues((prev) => ({ ...prev, email: e.target.value }))}
-        />
-        <input
-          className={inputClass}
-          type="text"
-          placeholder="Full name"
-          required
-          value={values.fullName}
-          onChange={(e) => setValues((prev) => ({ ...prev, fullName: e.target.value }))}
-        />
         <div className="flex flex-col">
+          <label className="mb-2 block text-sm text-subtle">Email</label>
+          <input
+            className={inputClass}
+            type="email"
+            placeholder="Email"
+            required
+            value={values.email}
+            onChange={(e) => setValues((prev) => ({ ...prev, email: e.target.value }))}
+          />
+        </div>
+        <div className="flex flex-col">
+          <label className="mb-2 block text-sm text-subtle">Mobile number</label>
+          <div className="flex gap-2">
+            <div className="flex h-12 w-24 items-center justify-center rounded-xl border border-white/15 bg-white/5 px-3">
+              <span className="text-sm text-white">🇪🇬 +20</span>
+            </div>
+            <input
+              className={`${inputClass} flex-1 ${mobileError ? ' border-error' : ''}`}
+              type="tel"
+              placeholder="1xxxxxxxxx"
+              required
+              value={values.mobileNumber}
+              onChange={(e) => handleMobileChange(e.target.value)}
+              maxLength={11}
+            />
+          </div>
+          {mobileError && <p className="mt-1 text-xs text-error">{mobileError}</p>}
+        </div>
+        <div className="flex flex-col">
+          <label className="mb-2 block text-sm text-subtle">Password</label>
+          <input
+            className={inputClass}
+            type="password"
+            placeholder="Password"
+            required
+            value={values.password}
+            onChange={(e) => setValues((prev) => ({ ...prev, password: e.target.value }))}
+          />
+        </div>
+        <div className="flex flex-col">
+          <label className="mb-2 block text-sm text-subtle">Confirm password</label>
+          <input
+            className={inputClass}
+            type="password"
+            placeholder="Confirm password"
+            required
+            value={values.confirmPassword}
+            onChange={(e) => setValues((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+          />
+        </div>
+        <div className="flex flex-col">
+          <label className="mb-2 block text-sm text-subtle">Full name</label>
+          <input
+            className={inputClass}
+            type="text"
+            placeholder="Full name"
+            required
+            value={values.fullName}
+            onChange={(e) => setValues((prev) => ({ ...prev, fullName: e.target.value }))}
+          />
+        </div>
+        <div className="flex flex-col">
+          <label className="mb-2 block text-sm text-subtle">Date of birth</label>
           <input
             className={`${dateClass}${ageError ? ' border-error' : ''}`}
             type="date"
@@ -152,61 +262,76 @@ export default function PlayerForm({ loading = false, error, minAge, maxAge, onS
             </p>
           )}
         </div>
-        <div className="relative">
-          <select
-            className={selectClass}
-            value={values.city}
-            onChange={(e) => setValues((prev) => ({ ...prev, city: e.target.value }))}
-          >
-            {cities.map((city) => (
-              <option key={city} value={city}>{city}</option>
-            ))}
-          </select>
-          <Chevron />
+        <div className="flex flex-col">
+          <label className="mb-2 block text-sm text-subtle">City</label>
+          <div className="relative">
+            <select
+              className={selectClass}
+              value={values.city}
+              onChange={(e) => setValues((prev) => ({ ...prev, city: e.target.value }))}
+            >
+              {cities.map((city) => (
+                <option key={city} value={city}>{city}</option>
+              ))}
+            </select>
+            <Chevron />
+          </div>
         </div>
-        <input
-          className={inputClass}
-          type="number"
-          placeholder="Height (cm)"
-          required
-          value={values.height}
-          onChange={(e) => setValues((prev) => ({ ...prev, height: e.target.value }))}
-        />
-        <input
-          className={inputClass}
-          type="number"
-          placeholder="Weight (kg)"
-          required
-          value={values.weight}
-          onChange={(e) => setValues((prev) => ({ ...prev, weight: e.target.value }))}
-        />
-        <div className="relative">
-          <select
-            className={selectClass}
-            value={values.preferredFoot}
-            onChange={(e) =>
-              setValues((prev) => ({ ...prev, preferredFoot: e.target.value as 'left' | 'right' | 'both' }))
-            }
-          >
-            <option value="left">Left</option>
-            <option value="right">Right</option>
-            <option value="both">Both</option>
-          </select>
-          <Chevron />
+        <div className="flex flex-col">
+          <label className="mb-2 block text-sm text-subtle">Height (cm)</label>
+          <input
+            className={inputClass}
+            type="number"
+            placeholder="Height (cm)"
+            required
+            value={values.height}
+            onChange={(e) => setValues((prev) => ({ ...prev, height: e.target.value }))}
+          />
         </div>
-        <div className="relative">
-          <select
-            className={selectClass}
-            value={values.position}
-            onChange={(e) => setValues((prev) => ({ ...prev, position: e.target.value }))}
-          >
-            <option>Goalkeeper</option>
-            <option>Defender</option>
-            <option>Midfielder</option>
-            <option>Winger</option>
-            <option>Forward</option>
-          </select>
-          <Chevron />
+        <div className="flex flex-col">
+          <label className="mb-2 block text-sm text-subtle">Weight (kg)</label>
+          <input
+            className={inputClass}
+            type="number"
+            placeholder="Weight (kg)"
+            required
+            value={values.weight}
+            onChange={(e) => setValues((prev) => ({ ...prev, weight: e.target.value }))}
+          />
+        </div>
+        <div className="flex flex-col">
+          <label className="mb-2 block text-sm text-subtle">Preferred foot</label>
+          <div className="relative">
+            <select
+              className={selectClass}
+              value={values.preferredFoot}
+              onChange={(e) =>
+                setValues((prev) => ({ ...prev, preferredFoot: e.target.value as 'left' | 'right' | 'both' }))
+              }
+            >
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+              <option value="both">Both</option>
+            </select>
+            <Chevron />
+          </div>
+        </div>
+        <div className="flex flex-col">
+          <label className="mb-2 block text-sm text-subtle">Position</label>
+          <div className="relative">
+            <select
+              className={selectClass}
+              value={values.position}
+              onChange={(e) => setValues((prev) => ({ ...prev, position: e.target.value }))}
+            >
+              <option>Goalkeeper</option>
+              <option>Defender</option>
+              <option>Midfielder</option>
+              <option>Winger</option>
+              <option>Forward</option>
+            </select>
+            <Chevron />
+          </div>
         </div>
 
         <div className="sm:col-span-2">
@@ -221,6 +346,7 @@ export default function PlayerForm({ loading = false, error, minAge, maxAge, onS
         </div>
 
         {error ? <p className="sm:col-span-2 text-sm text-error">{error}</p> : null}
+        {passwordError ? <p className="sm:col-span-2 text-sm text-error">{passwordError}</p> : null}
 
         <button
           type="submit"
