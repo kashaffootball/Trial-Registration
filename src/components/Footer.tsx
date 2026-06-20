@@ -15,7 +15,7 @@ export default function Footer() {
           rel="noopener noreferrer"
           className="flex items-center overflow-hidden"
         >
-          <img src="dist/App Store Apple Logo.png" alt="App Store" className="h-12 w-auto object-contain" />
+          <img src="/App Store Apple Logo.png" alt="App Store" className="h-12 w-auto object-contain" />
         </a>
 
         {/* Google Play */}
@@ -25,7 +25,7 @@ export default function Footer() {
           rel="noopener noreferrer"
           className="flex items-center overflow-hidden"
         >
-          <img src="dist/Google Play Android App Logo.png" alt="Google Play" className="h-12 w-auto object-contain" />
+          <img src="/Google Play Android App Logo.png" alt="Google Play" className="h-12 w-auto object-contain" />
         </a>
       </div>
 
